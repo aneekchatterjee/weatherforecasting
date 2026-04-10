@@ -1,0 +1,557 @@
+import { useState, useEffect, useCallback } from "react";
+
+// ─── Data ────────────────────────────────────────────────────────────────────
+const WEATHER_DB = {
+  chennai:    { name:"Chennai",       country:"India",     region:"Tamil Nadu",       lat:"13.08°N", lon:"80.27°E", tz:"UTC+5:30", tempC:33, feels:38, humidity:78, wind:18, pressure:1008, visibility:8,  uv:10, condition:"Humid & Sunny",     icon:"☀️",  bg:["#7b4f00","#b36a00"] },
+  delhi:      { name:"New Delhi",     country:"India",     region:"Delhi NCT",         lat:"28.61°N", lon:"77.20°E", tz:"UTC+5:30", tempC:37, feels:42, humidity:45, wind:22, pressure:1003, visibility:6,  uv:9,  condition:"Hot & Hazy",         icon:"🌤️", bg:["#5a3000","#8b4a00"] },
+  mumbai:     { name:"Mumbai",        country:"India",     region:"Maharashtra",       lat:"19.07°N", lon:"72.87°E", tz:"UTC+5:30", tempC:31, feels:36, humidity:82, wind:24, pressure:1010, visibility:7,  uv:8,  condition:"Partly Cloudy",      icon:"⛅",  bg:["#1a3a5c","#0d2a4a"] },
+  london:     { name:"London",        country:"UK",        region:"England",           lat:"51.50°N", lon:"0.12°W",  tz:"UTC+1",    tempC:14, feels:11, humidity:72, wind:32, pressure:1016, visibility:12, uv:3,  condition:"Overcast",           icon:"🌥️", bg:["#1c2c3a","#2a3d50"] },
+  "new york": { name:"New York",      country:"USA",       region:"New York State",    lat:"40.71°N", lon:"74.00°W", tz:"UTC-4",    tempC:18, feels:17, humidity:60, wind:20, pressure:1014, visibility:15, uv:5,  condition:"Mostly Clear",       icon:"🌤️", bg:["#0d2a3a","#163a50"] },
+  tokyo:      { name:"Tokyo",         country:"Japan",     region:"Kantō Region",      lat:"35.68°N", lon:"139.69°E",tz:"UTC+9",    tempC:22, feels:22, humidity:55, wind:14, pressure:1018, visibility:18, uv:6,  condition:"Clear & Calm",       icon:"☀️",  bg:["#1a0a2e","#2d1050"] },
+  paris:      { name:"Paris",         country:"France",    region:"Île-de-France",     lat:"48.85°N", lon:"2.35°E",  tz:"UTC+2",    tempC:17, feels:15, humidity:65, wind:18, pressure:1015, visibility:14, uv:4,  condition:"Light Clouds",       icon:"⛅",  bg:["#1a1a2e","#16213e"] },
+  dubai:      { name:"Dubai",         country:"UAE",       region:"Dubai Emirate",     lat:"25.20°N", lon:"55.27°E", tz:"UTC+4",    tempC:40, feels:46, humidity:50, wind:16, pressure:1001, visibility:10, uv:11, condition:"Extremely Hot",      icon:"🌞",  bg:["#6b3000","#a04500"] },
+  sydney:     { name:"Sydney",        country:"Australia", region:"New South Wales",   lat:"33.86°S", lon:"151.20°E",tz:"UTC+10",   tempC:19, feels:18, humidity:62, wind:26, pressure:1020, visibility:20, uv:5,  condition:"Pleasant & Sunny",   icon:"🌤️", bg:["#002244","#003366"] },
+  moscow:     { name:"Moscow",        country:"Russia",    region:"Central Russia",    lat:"55.75°N", lon:"37.61°E", tz:"UTC+3",    tempC:8,  feels:5,  humidity:70, wind:28, pressure:1012, visibility:16, uv:2,  condition:"Cool & Cloudy",      icon:"🌧️", bg:["#0d1a0d","#1a2a1a"] },
+  singapore:  { name:"Singapore",     country:"Singapore", region:"Central Region",    lat:"1.35°N",  lon:"103.82°E",tz:"UTC+8",    tempC:30, feels:36, humidity:85, wind:12, pressure:1009, visibility:10, uv:9,  condition:"Hot & Humid",        icon:"🌦️", bg:["#002a1a","#004030"] },
+  cairo:      { name:"Cairo",         country:"Egypt",     region:"Cairo Governorate", lat:"30.04°N", lon:"31.23°E", tz:"UTC+2",    tempC:34, feels:37, humidity:38, wind:20, pressure:1010, visibility:14, uv:9,  condition:"Dry & Sunny",        icon:"☀️",  bg:["#5a3a00","#8a5500"] },
+  toronto:    { name:"Toronto",       country:"Canada",    region:"Ontario",           lat:"43.65°N", lon:"79.38°W", tz:"UTC-4",    tempC:15, feels:13, humidity:58, wind:22, pressure:1015, visibility:18, uv:4,  condition:"Partly Sunny",       icon:"🌤️", bg:["#0a1a2e","#102240"] },
+  berlin:     { name:"Berlin",        country:"Germany",   region:"Brandenburg",       lat:"52.52°N", lon:"13.40°E", tz:"UTC+2",    tempC:12, feels:10, humidity:68, wind:24, pressure:1013, visibility:15, uv:3,  condition:"Cloudy Spells",      icon:"🌥️", bg:["#1a1a1a","#2a2a2a"] },
+  beijing:    { name:"Beijing",       country:"China",     region:"Beijing Municipality",lat:"39.90°N",lon:"116.40°E",tz:"UTC+8",   tempC:21, feels:20, humidity:42, wind:18, pressure:1011, visibility:9,  uv:6,  condition:"Hazy",               icon:"🌫️", bg:["#1a1014","#2a1a20"] },
+  bangalore:  { name:"Bengaluru",     country:"India",     region:"Karnataka",         lat:"12.97°N", lon:"77.59°E", tz:"UTC+5:30", tempC:26, feels:27, humidity:60, wind:12, pressure:1012, visibility:16, uv:7,  condition:"Pleasant",           icon:"⛅",  bg:["#002a1a","#003a26"] },
+  kolkata:    { name:"Kolkata",       country:"India",     region:"West Bengal",       lat:"22.57°N", lon:"88.36°E", tz:"UTC+5:30", tempC:36, feels:40, humidity:80, wind:14, pressure:1006, visibility:7,  uv:9,  condition:"Sweltering",         icon:"🌤️", bg:["#5a2000","#7a3000"] },
+  hyderabad:  { name:"Hyderabad",     country:"India",     region:"Telangana",         lat:"17.38°N", lon:"78.48°E", tz:"UTC+5:30", tempC:34, feels:37, humidity:52, wind:16, pressure:1010, visibility:13, uv:9,  condition:"Hot & Sunny",        icon:"☀️",  bg:["#4a2a00","#6a3a00"] },
+};
+
+const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const FORECAST_ICONS = ["☀️","⛅","🌦️","🌤️","🌥️"];
+const HOURLY_ICONS =   ["🌙","🌙","⛅","🌤️","☀️","☀️","🌤️","⛅","🌥️","🌙","🌙","🌙"];
+
+// ─── Conversion helpers ───────────────────────────────────────────────────────
+const cToF = (c) => +(c * 9 / 5 + 32).toFixed(1);
+const cToK = (c) => +(c + 273.15).toFixed(2);
+
+function convertTemp(c, unit) {
+  if (unit === "F") return Math.round(cToF(c));
+  if (unit === "K") return Math.round(cToK(c));
+  return Math.round(c);
+}
+function unitLabel(unit) { return unit === "K" ? "K" : `°${unit}`; }
+
+// ─── Styles object ────────────────────────────────────────────────────────────
+const S = {
+  root: {
+    fontFamily: "'DM Mono', monospace",
+    background: "#080f1e",
+    minHeight: "100vh",
+    color: "#e3f2fd",
+    position: "relative",
+    overflowX: "hidden",
+  },
+  bgGlow: (city) => ({
+    position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+    pointerEvents: "none", zIndex: 0,
+    background: city
+      ? `radial-gradient(ellipse at 15% 15%, ${city.bg[0]}55 0%, transparent 55%),
+         radial-gradient(ellipse at 85% 85%, ${city.bg[1]}33 0%, transparent 55%),
+         linear-gradient(160deg, #080f1e 0%, #0d1830 100%)`
+      : "linear-gradient(160deg, #080f1e 0%, #0d1830 100%)",
+    transition: "background 1.2s ease",
+  }),
+  stars: {
+    position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+    pointerEvents: "none", zIndex: 0,
+    backgroundImage: `
+      radial-gradient(1px 1px at 8% 12%, rgba(255,255,255,0.7) 0%, transparent 100%),
+      radial-gradient(1px 1px at 22% 55%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 40% 30%, rgba(255,255,255,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 60% 8%,  rgba(255,255,255,0.6) 0%, transparent 100%),
+      radial-gradient(1px 1px at 75% 62%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 88% 40%, rgba(255,255,255,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 50% 78%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 88%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 92% 20%, rgba(255,255,255,0.6) 0%, transparent 100%),
+      radial-gradient(1px 1px at 16% 72%, rgba(255,255,255,0.5) 0%, transparent 100%)`,
+  },
+  wrapper: {
+    position: "relative", zIndex: 1,
+    maxWidth: 900, margin: "0 auto", padding: "32px 20px 80px",
+  },
+  header: {
+    display: "flex", alignItems: "center",
+    justifyContent: "space-between", marginBottom: 40,
+  },
+  logo: {
+    fontFamily: "'Syne', sans-serif",
+    fontSize: 24, fontWeight: 800, letterSpacing: -1,
+    color: "#4fc3f7",
+  },
+  logoSpan: { color: "#ffd54f" },
+  unitToggle: {
+    display: "flex", gap: 4,
+    background: "rgba(255,255,255,0.05)",
+    border: "1px solid rgba(79,195,247,0.2)",
+    borderRadius: 50, padding: 4,
+  },
+  unitBtn: (active) => ({
+    border: "none", cursor: "pointer",
+    fontFamily: "'DM Mono', monospace",
+    fontSize: 13, fontWeight: active ? 700 : 400,
+    padding: "6px 18px", borderRadius: 50,
+    transition: "all 0.2s",
+    background: active ? "#4fc3f7" : "transparent",
+    color: active ? "#080f1e" : "#90a4ae",
+  }),
+  searchRow: { display: "flex", gap: 12, marginBottom: 36 },
+  searchInput: {
+    flex: 1,
+    background: "rgba(255,255,255,0.05)",
+    border: "1px solid rgba(79,195,247,0.2)",
+    borderRadius: 14, padding: "14px 20px",
+    color: "#e3f2fd",
+    fontFamily: "'DM Mono', monospace", fontSize: 15,
+    outline: "none",
+  },
+  searchBtn: {
+    background: "#4fc3f7", color: "#080f1e",
+    border: "none", borderRadius: 14, padding: "14px 28px",
+    fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 700,
+    cursor: "pointer", letterSpacing: 1,
+  },
+  card: {
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(79,195,247,0.15)",
+    borderRadius: 24, padding: "28px 32px", marginBottom: 20,
+    backdropFilter: "blur(10px)",
+  },
+  cityName: {
+    fontFamily: "'Syne', sans-serif",
+    fontSize: 36, fontWeight: 800, color: "#e3f2fd",
+    marginBottom: 4,
+  },
+  cityMeta: { color: "#78909c", fontSize: 13, marginBottom: 32 },
+  tempRow: { display: "flex", alignItems: "flex-start", gap: 28, marginBottom: 28, flexWrap: "wrap" },
+  weatherIcon: { fontSize: 80, lineHeight: 1 },
+  tempMain: {
+    fontFamily: "'Syne', sans-serif",
+    fontSize: 96, fontWeight: 800, lineHeight: 1,
+    color: "#4fc3f7", letterSpacing: -6,
+  },
+  tempUnit: {
+    fontFamily: "'Syne', sans-serif",
+    fontSize: 34, fontWeight: 500, color: "#546e7a",
+    marginTop: 14,
+  },
+  condition: {
+    fontFamily: "'Syne', sans-serif",
+    fontSize: 20, fontWeight: 600, color: "#e3f2fd", marginBottom: 16,
+  },
+  tagRow: { display: "flex", gap: 8, flexWrap: "wrap" },
+  tag: {
+    fontSize: 11, padding: "4px 14px", borderRadius: 50,
+    background: "rgba(79,195,247,0.1)",
+    border: "1px solid rgba(79,195,247,0.25)",
+    color: "#81d4fa", fontWeight: 500,
+  },
+  metaGrid: {
+    display: "grid", gridTemplateColumns: "repeat(4, 1fr)",
+    gap: 12, marginTop: 28,
+  },
+  metaItem: {
+    background: "rgba(255,255,255,0.03)",
+    border: "1px solid rgba(255,255,255,0.07)",
+    borderRadius: 14, padding: "14px 12px", textAlign: "center",
+  },
+  metaLabel: { fontSize: 11, color: "#546e7a", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 },
+  metaValue: { fontFamily: "'Syne', sans-serif", fontSize: 20, fontWeight: 700, color: "#80deea" },
+  metaSmall: { fontSize: 10, color: "#546e7a" },
+  sectionTitle: {
+    fontFamily: "'Syne', sans-serif",
+    fontSize: 11, fontWeight: 600, color: "#546e7a",
+    textTransform: "uppercase", letterSpacing: 2, marginBottom: 18,
+  },
+  hourlyRow: {
+    display: "flex", gap: 10,
+    overflowX: "auto", paddingBottom: 8,
+  },
+  hourlyCard: {
+    flex: "0 0 82px",
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(79,195,247,0.12)",
+    borderRadius: 16, padding: "14px 8px", textAlign: "center",
+  },
+  hcTime: { fontSize: 11, color: "#546e7a", marginBottom: 8 },
+  hcIcon: { fontSize: 22, marginBottom: 8 },
+  hcTemp: { fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 700, color: "#e3f2fd" },
+  forecastGrid: {
+    display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12,
+  },
+  fcCard: {
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(79,195,247,0.12)",
+    borderRadius: 18, padding: "18px 10px", textAlign: "center",
+  },
+  fcDay: { fontSize: 11, color: "#546e7a", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 },
+  fcIcon: { fontSize: 26, marginBottom: 10 },
+  fcHigh: { fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 700, color: "#e3f2fd" },
+  fcLow: { fontSize: 12, color: "#546e7a", marginTop: 2 },
+  convRow: {
+    display: "flex", alignItems: "center",
+    gap: 16, flexWrap: "wrap", marginBottom: 20,
+  },
+  convInputWrap: { display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 160 },
+  convInput: {
+    flex: 1,
+    background: "rgba(255,255,255,0.07)",
+    border: "1px solid rgba(79,195,247,0.2)",
+    borderRadius: 12, padding: "12px 16px",
+    color: "#e3f2fd",
+    fontFamily: "'Syne', sans-serif", fontSize: 26, fontWeight: 700,
+    outline: "none", width: "100%",
+  },
+  convLabel: { fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 600, color: "#546e7a", whiteSpace: "nowrap" },
+  convArrow: { fontSize: 22, color: "#4fc3f7", fontWeight: 700 },
+  convResults: { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 },
+  convItem: (accent) => ({
+    background: `${accent}11`,
+    border: `1px solid ${accent}33`,
+    borderRadius: 14, padding: "18px 12px", textAlign: "center",
+  }),
+  convResLabel: { fontSize: 11, color: "#546e7a", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 },
+  convResVal: (color) => ({ fontFamily: "'Syne', sans-serif", fontSize: 24, fontWeight: 700, color }),
+  formulaBox: {
+    marginTop: 20, padding: 16,
+    background: "rgba(255,255,255,0.03)",
+    border: "1px solid rgba(255,255,255,0.07)",
+    borderRadius: 14,
+  },
+  formulaText: { fontSize: 12, color: "#546e7a", lineHeight: 2 },
+  notFound: {
+    textAlign: "center", padding: "60px 20px",
+    fontFamily: "'Syne', sans-serif", fontSize: 20, color: "#546e7a",
+  },
+  citySuggestions: {
+    marginTop: 16, display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center",
+  },
+  suggTag: {
+    fontSize: 12, padding: "6px 14px", borderRadius: 50,
+    background: "rgba(79,195,247,0.08)",
+    border: "1px solid rgba(79,195,247,0.2)",
+    color: "#4fc3f7", cursor: "pointer",
+    fontFamily: "'DM Mono', monospace",
+  },
+  uvBar: (uv) => ({
+    height: 6, borderRadius: 6, marginTop: 6,
+    background: uv >= 8 ? "#ef5350" : uv >= 6 ? "#ffa726" : uv >= 3 ? "#ffee58" : "#66bb6a",
+    width: `${Math.min(uv * 9, 100)}%`,
+    transition: "width 0.6s ease",
+  }),
+};
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function UnitToggle({ unit, setUnit }) {
+  return (
+    <div style={S.unitToggle}>
+      {["C","F","K"].map(u => (
+        <button key={u} style={S.unitBtn(unit === u)} onClick={() => setUnit(u)}>
+          {u === "K" ? "K" : `°${u}`}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function SearchBar({ query, setQuery, onSearch }) {
+  return (
+    <div style={S.searchRow}>
+      <input
+        style={S.searchInput}
+        value={query}
+        onChange={e => setQuery(e.target.value)}
+        onKeyDown={e => e.key === "Enter" && onSearch()}
+        placeholder="Search city… Chennai, London, Tokyo, Dubai…"
+      />
+      <button style={S.searchBtn} onClick={onSearch}>SEARCH</button>
+    </div>
+  );
+}
+
+function MainCard({ city, unit }) {
+  const t = convertTemp(city.tempC, unit);
+  const feels = convertTemp(city.feels, unit);
+  const ul = unitLabel(unit);
+  return (
+    <div style={{ ...S.card, position: "relative", overflow: "hidden" }}>
+      <div style={{
+        position: "absolute", top: -100, right: -100, width: 280, height: 280,
+        borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(79,195,247,0.07) 0%, transparent 70%)",
+        pointerEvents: "none",
+      }} />
+      <div style={S.cityName}>{city.name}</div>
+      <div style={S.cityMeta}>
+        {city.region}, {city.country} &nbsp;·&nbsp; {city.lat} {city.lon} &nbsp;·&nbsp; {city.tz}
+      </div>
+      <div style={S.tempRow}>
+        <div style={S.weatherIcon}>{city.icon}</div>
+        <div>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 4 }}>
+            <div style={S.tempMain}>{t}</div>
+            <div style={S.tempUnit}>{ul}</div>
+          </div>
+          <div style={S.condition}>{city.condition}</div>
+          <div style={S.tagRow}>
+            <span style={S.tag}>Feels like {feels}{ul}</span>
+            <span style={S.tag}>UV Index {city.uv}</span>
+            <span style={S.tag}>Wind {city.wind} km/h</span>
+            <span style={S.tag}>Humidity {city.humidity}%</span>
+          </div>
+        </div>
+      </div>
+      <div style={S.metaGrid}>
+        {[
+          { label: "Humidity",   value: `${city.humidity}%` },
+          { label: "Wind Speed", value: city.wind, unit: " km/h" },
+          { label: "Pressure",   value: city.pressure, unit: " hPa" },
+          { label: "Visibility", value: city.visibility, unit: " km" },
+        ].map(m => (
+          <div key={m.label} style={S.metaItem}>
+            <div style={S.metaLabel}>{m.label}</div>
+            <div style={S.metaValue}>
+              {m.value}<span style={S.metaSmall}>{m.unit || ""}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ marginTop: 20 }}>
+        <div style={{ ...S.metaLabel, marginBottom: 4 }}>UV Index — {city.uv}/11</div>
+        <div style={{ background: "rgba(255,255,255,0.07)", borderRadius: 6, height: 6, overflow: "hidden" }}>
+          <div style={S.uvBar(city.uv)} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HourlyForecast({ city, unit }) {
+  const ul = unitLabel(unit);
+  const now = new Date();
+  const hours = Array.from({ length: 12 }, (_, i) => {
+    const h = (now.getHours() + i * 2) % 24;
+    const variation = Math.round(Math.sin(i * 0.6) * 3);
+    const tc = city.tempC + variation;
+    const label = h === 0 ? "12am" : h < 12 ? `${h}am` : h === 12 ? "12pm" : `${h - 12}pm`;
+    return { label, icon: HOURLY_ICONS[i], temp: convertTemp(tc, unit) };
+  });
+  return (
+    <div style={S.card}>
+      <div style={S.sectionTitle}>Hourly Forecast</div>
+      <div style={S.hourlyRow}>
+        {hours.map((h, i) => (
+          <div key={i} style={S.hourlyCard}>
+            <div style={S.hcTime}>{h.label}</div>
+            <div style={S.hcIcon}>{h.icon}</div>
+            <div style={S.hcTemp}>{h.temp}{ul}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FiveDayForecast({ city, unit }) {
+  const ul = unitLabel(unit);
+  const today = new Date().getDay();
+  const days = Array.from({ length: 5 }, (_, i) => ({
+    day: DAYS[(today + i + 1) % 7],
+    icon: FORECAST_ICONS[i],
+    high: convertTemp(city.tempC + Math.floor(Math.random() * 4 - 1), unit),
+    low:  convertTemp(city.tempC - Math.floor(Math.random() * 7 + 4), unit),
+  }));
+  return (
+    <div style={S.card}>
+      <div style={S.sectionTitle}>5-Day Forecast</div>
+      <div style={S.forecastGrid}>
+        {days.map((d, i) => (
+          <div key={i} style={S.fcCard}>
+            <div style={S.fcDay}>{d.day}</div>
+            <div style={S.fcIcon}>{d.icon}</div>
+            <div style={S.fcHigh}>{d.high}{ul}</div>
+            <div style={S.fcLow}>{d.low}{ul}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TemperatureConverter({ defaultC }) {
+  const [input, setInput] = useState(String(defaultC));
+  useEffect(() => { setInput(String(defaultC)); }, [defaultC]);
+
+  const c = parseFloat(input);
+  const valid = !isNaN(c);
+  const fVal = valid ? cToF(c).toFixed(1) : "—";
+  const kVal = valid ? cToK(c).toFixed(2) : "—";
+  const cVal = valid ? c.toFixed(1) : "—";
+
+  return (
+    <div style={S.card}>
+      <div style={S.sectionTitle}>Temperature Converter</div>
+      <div style={S.convRow}>
+        <div style={S.convInputWrap}>
+          <input
+            type="number"
+            style={S.convInput}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            step="0.5"
+          />
+          <span style={S.convLabel}>°C</span>
+        </div>
+        <div style={S.convArrow}>→</div>
+        <span style={{ fontFamily: "'DM Mono'", fontSize: 13, color: "#546e7a" }}>all units</span>
+      </div>
+      <div style={S.convResults}>
+        <div style={S.convItem("#4fc3f7")}>
+          <div style={S.convResLabel}>Celsius</div>
+          <div style={S.convResVal("#4fc3f7")}>{cVal}°C</div>
+        </div>
+        <div style={S.convItem("#ffd54f")}>
+          <div style={S.convResLabel}>Fahrenheit</div>
+          <div style={S.convResVal("#ffd54f")}>{fVal}°F</div>
+        </div>
+        <div style={S.convItem("#a5d6a7")}>
+          <div style={S.convResLabel}>Kelvin</div>
+          <div style={S.convResVal("#a5d6a7")}>{kVal} K</div>
+        </div>
+      </div>
+      <div style={S.formulaBox}>
+        <div style={S.formulaText}>
+          <span style={{ color: "#ffd54f" }}>°F</span> = (°C × 9/5) + 32
+          &nbsp;&nbsp;&nbsp;
+          <span style={{ color: "#a5d6a7" }}>K</span> = °C + 273.15
+          &nbsp;&nbsp;&nbsp;
+          <span style={{ color: "#4fc3f7" }}>°C</span> = (°F − 32) × 5/9
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CityComparison({ unit }) {
+  const ul = unitLabel(unit);
+  const cities = Object.values(WEATHER_DB).slice(0, 8);
+  return (
+    <div style={S.card}>
+      <div style={S.sectionTitle}>Global Temperature Snapshot</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {cities.map(c => {
+          const t = convertTemp(c.tempC, unit);
+          const pct = Math.max(0, Math.min(100, ((c.tempC + 10) / 55) * 100));
+          return (
+            <div key={c.name} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ width: 90, fontSize: 12, color: "#90a4ae", flexShrink: 0 }}>{c.name}</span>
+              <span style={{ fontSize: 14 }}>{c.icon}</span>
+              <div style={{
+                flex: 1, height: 8, background: "rgba(255,255,255,0.07)",
+                borderRadius: 8, overflow: "hidden",
+              }}>
+                <div style={{
+                  width: `${pct}%`, height: "100%", borderRadius: 8,
+                  background: c.tempC >= 35 ? "#ef5350" : c.tempC >= 25 ? "#ffa726" : c.tempC >= 15 ? "#4fc3f7" : "#81c784",
+                  transition: "width 0.6s ease",
+                }} />
+              </div>
+              <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 700, color: "#e3f2fd", width: 52, textAlign: "right" }}>
+                {t}{ul}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ marginTop: 16, display: "flex", gap: 16, flexWrap: "wrap" }}>
+        {[["#ef5350","Hot (35°C+)"],["#ffa726","Warm (25-34°C)"],["#4fc3f7","Cool (15-24°C)"],["#81c784","Cold (<15°C)"]].map(([c,l]) => (
+          <div key={l} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ width: 10, height: 10, borderRadius: "50%", background: c }} />
+            <span style={{ fontSize: 11, color: "#546e7a" }}>{l}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main App ─────────────────────────────────────────────────────────────────
+export default function WeatherApp() {
+  const [unit, setUnit] = useState("C");
+  const [query, setQuery] = useState("chennai");
+  const [city, setCity] = useState(WEATHER_DB["chennai"]);
+  const [notFound, setNotFound] = useState(false);
+
+  const handleSearch = useCallback(() => {
+    const q = query.trim().toLowerCase();
+    const match = WEATHER_DB[q] ||
+      Object.values(WEATHER_DB).find(c => c.name.toLowerCase() === q || c.name.toLowerCase().startsWith(q));
+    if (match) { setCity(match); setNotFound(false); }
+    else setNotFound(true);
+  }, [query]);
+
+  const SUGGESTIONS = ["Chennai","London","Tokyo","Dubai","Sydney","Paris","Moscow","Berlin"];
+
+  return (
+    <>
+      <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+      <style>{`
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+        ::-webkit-scrollbar { height: 4px; } 
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(79,195,247,0.3); border-radius: 4px; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-up { animation: fadeUp 0.5s ease both; }
+        .hover-card:hover { border-color: rgba(79,195,247,0.35) !important; transform: translateY(-1px); transition: all 0.2s; }
+      `}</style>
+      <div style={S.root}>
+        <div style={S.bgGlow(city)} />
+        <div style={S.stars} />
+        <div style={S.wrapper}>
+
+          {/* Header */}
+          <header style={S.header}>
+            <div style={S.logo}>SKY<span style={S.logoSpan}>CAST</span></div>
+            <UnitToggle unit={unit} setUnit={setUnit} />
+          </header>
+
+          {/* Search */}
+          <SearchBar query={query} setQuery={setQuery} onSearch={handleSearch} />
+
+          {notFound ? (
+            <div style={S.notFound}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
+              <div>City not found</div>
+              <div style={{ fontSize: 14, marginTop: 8, marginBottom: 20 }}>Try one of these:</div>
+              <div style={S.citySuggestions}>
+                {SUGGESTIONS.map(s => (
+                  <span key={s} style={S.suggTag} onClick={() => { setQuery(s.toLowerCase()); setNotFound(false); const m=WEATHER_DB[s.toLowerCase()]; if(m) setCity(m); }}>
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : city ? (
+            <div className="fade-up">
+              <MainCard city={city} unit={unit} />
+              <HourlyForecast city={city} unit={unit} />
+              <FiveDayForecast city={city} unit={unit} />
+              <TemperatureConverter defaultC={city.tempC} />
+              <CityComparison unit={unit} />
+            </div>
+          ) : null}
+
+        </div>
+      </div>
+    </>
+  );
+}
